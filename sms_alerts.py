@@ -104,6 +104,47 @@ def send_sms(to, body):
         raise RuntimeError(f"{r.status_code}: {r.text}")
     return r.json().get("id", "queued")
 
+DISTRICTS = {
+    "Colombo": (6.9271, 79.8612), "Gampaha": (7.0873, 79.9925),
+    "Kalutara": (6.5854, 79.9607), "Kandy": (7.2906, 80.6337),
+    "Matale": (7.4675, 80.6234), "Nuwara Eliya": (6.9497, 80.7891),
+    "Galle": (6.0535, 80.2210), "Matara": (5.9549, 80.5550),
+    "Hambantota": (6.1241, 81.1185), "Jaffna": (9.6615, 80.0255),
+    "Kilinochchi": (9.3803, 80.3770), "Mannar": (8.9810, 79.9044),
+    "Vavuniya": (8.7514, 80.4971), "Mullaitivu": (9.2671, 80.8142),
+    "Batticaloa": (7.7102, 81.6924), "Ampara": (7.2975, 81.6820),
+    "Trincomalee": (8.5874, 81.2152), "Kurunegala": (7.4863, 80.3647),
+    "Puttalam": (8.0362, 79.8283), "Anuradhapura": (8.3114, 80.4037),
+    "Polonnaruwa": (7.9403, 81.0188), "Badulla": (6.9934, 81.0550),
+    "Monaragala": (6.8728, 81.3507), "Ratnapura": (6.7056, 80.3847),
+    "Kegalle": (7.2513, 80.3464),
+}
+
+
+def load_subscribers(here):
+    """Read signups from the published Google Sheet, or fall back to subscribers.json."""
+    url = os.environ.get("SHEET_CSV_URL")
+    if not url:
+        return json.loads((here / "subscribers.json").read_text(encoding="utf-8"))
+    r = requests.get(url, timeout=20)
+    r.raise_for_status()
+    r.encoding = "utf-8"
+    people = []
+    for row in csv.DictReader(io.StringIO(r.text)):
+        phone = "".join(c for c in (row.get("Phone") or "") if c.isdigit())
+        district = (row.get("District") or "").strip()
+        if not phone or district not in DISTRICTS:
+            continue
+        lang_text = (row.get("Language") or "").lower()
+        lang = "si" if "sinhala" in lang_text else "ta" if "tamil" in lang_text else "en"
+        lat, lon = DISTRICTS[district]
+        people.append({
+            "name": (row.get("Name") or phone).strip(),
+            "phone": phone, "lang": lang, "lat": lat, "lon": lon,
+            "place": {"en": district, "si": district, "ta": district},
+            "sms_enabled": True,
+        })
+    return people
 
 def main():
     # Make Sinhala / Tamil print correctly on Windows terminals
