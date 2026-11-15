@@ -24,3 +24,4 @@ jobs:
         env:
           SMSGATE_USERNAME: ${{ secrets.SMSGATE_USERNAME }}
           SMSGATE_PASSWORD: ${{ secrets.SMSGATE_PASSWORD }}
+          SHEET_CSV_URL: ${{ secrets.SHEET_CSV_URL }}
