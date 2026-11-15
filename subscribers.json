@@ -1,12 +1,12 @@
 [
   {
-    "name": "Nimal Perera",
-    "phone": "0771234567",
+    "name": "Shaji",
+    "phone": "0762951909",
     "lat": 7.4863, "lon": 80.3647,
     "lang": "si",
     "crop": "rice",
     "place": { "en": "Kurunegala", "si": "කුරුණෑගල", "ta": "குருணாகல்" },
-    "sms_enabled": false
+    "sms_enabled": true
   },
   {
     "name": "Selvarajah Kumar",
