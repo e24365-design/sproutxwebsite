@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Nimal Perera",
+    "phone": "0771234567",
+    "lat": 7.4863, "lon": 80.3647,
+    "lang": "si",
+    "crop": "rice",
+    "place": { "en": "Kurunegala", "si": "කුරුණෑගල", "ta": "குருணாகல்" },
+    "sms_enabled": false
+  },
+  {
+    "name": "Selvarajah Kumar",
+    "phone": "0712345678",
+    "lat": 9.6615, "lon": 80.0255,
+    "lang": "ta",
+    "crop": "chilli",
+    "place": { "en": "Jaffna", "si": "යාපනය", "ta": "யாழ்ப்பாணம்" },
+    "sms_enabled": false
+  },
+  {
+    "name": "Priya Fernando",
+    "phone": "0751112233",
+    "lat": 6.9497, "lon": 80.7891,
+    "lang": "en",
+    "crop": "tea",
+    "place": { "en": "Nuwara Eliya", "si": "නුවරඑළිය", "ta": "நுவரெலியா" },
+    "sms_enabled": false
+  }
+]

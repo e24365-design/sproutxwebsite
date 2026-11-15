@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sproutx – Let your plant grow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Sans+Sinhala:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">🌱 Sproutx</div>
+  <div class="langs" role="group" aria-label="Language">
+    <button data-lang="si">සිංහල</button>
+    <button data-lang="ta">தமிழ்</button>
+    <button data-lang="en">English</button>
+  </div>
+</header>
+
+<!-- LANDING (before login) -->
+<main id="landing">
+  <section class="hero">
+    <svg class="plant" viewBox="0 0 200 220" aria-hidden="true">
+      <ellipse cx="100" cy="205" rx="60" ry="10" fill="#8b5e3c" opacity=".35"/>
+      <path class="stem" d="M100 205 C100 160 100 120 100 80" stroke="#2e7d32" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path class="leaf l1" d="M100 150 C60 150 40 120 38 100 C70 100 95 115 100 150Z" fill="#43a047"/>
+      <path class="leaf l2" d="M100 120 C140 120 162 92 164 72 C130 72 105 88 100 120Z" fill="#66bb6a"/>
+      <path class="leaf l3" d="M100 90 C80 70 82 40 100 22 C118 40 120 70 100 90Z" fill="#81c784"/>
+    </svg>
+    <h1 data-i18n="tagline"></h1>
+    <p data-i18n="sub"></p>
+    <a class="scroll" href="#auth" data-i18n="scroll"></a>
+  </section>
+
+  <section id="auth" class="auth">
+    <div id="authBox" class="card"></div>
+  </section>
+</main>
+
+<!-- APP (after login) -->
+<div id="app" hidden>
+  <nav id="nav" class="tabs"></nav>
+  <main id="view" class="view"></main>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/data.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
