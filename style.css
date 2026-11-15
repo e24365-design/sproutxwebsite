@@ -99,3 +99,18 @@ th, td { text-align: left; padding: .45rem .3rem; border-bottom: 1px solid var(-
 .toast { position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%); background: #263238; color: #fff; padding: .6rem 1rem; border-radius: 10px; z-index: 50; }
 
 @media (max-width: 520px) { .kv { grid-template-columns: 1fr; } }
+
+/* ---- location, crop picker, farm profile form ---- */
+.hint.bad { color: var(--warn); }
+.chk { display: flex; align-items: center; gap: .5rem; font-weight: 400; margin: .3rem 0; cursor: pointer; }
+.chk input { width: auto; flex: 0 0 auto; }
+.checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 1rem; }
+.lyrow { margin-top: .5rem; }
+.lyrow > select, .lyrow > input { flex: 1 1 130px; width: auto; min-width: 0; }
+.lyrow .rm { flex: 0 0 auto; padding: .5rem .7rem; }
+textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #c5d6c4; border-radius: 10px; background: #fff; font: inherit; resize: vertical; }
+textarea:focus { outline: 2px solid var(--leaf); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.profile h3 { margin-top: 0; }
+.link { background: none; border: 0; color: var(--green-d); text-decoration: underline; cursor: pointer; padding: .4rem 0; }
+@media (max-width: 520px) { .two { grid-template-columns: 1fr; } }

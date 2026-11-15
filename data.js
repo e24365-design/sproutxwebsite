@@ -1,20 +1,95 @@
 // Sproutx demo data. EVERYTHING in this file is FAKE / SAMPLE data for the hackathon demo.
 window.DATA = {
+  // All 25 districts of Sri Lanka (centre point = district capital). `crops` = SAMPLE suggestions for the Advice tab.
   districts: [
-    { id: "colombo",      lat: 6.9271, lon: 79.8612, name: { en: "Colombo",      si: "කොළඹ",        ta: "கொழும்பு" },        crops: ["tomato", "chilli"] },
-    { id: "gampaha",      lat: 7.0840, lon: 80.0098, name: { en: "Gampaha",      si: "ගම්පහ",       ta: "கம்பஹா" },          crops: ["tomato", "rice"] },
-    { id: "kandy",        lat: 7.2906, lon: 80.6337, name: { en: "Kandy",        si: "මහනුවර",      ta: "கண்டி" },           crops: ["tea", "tomato"] },
-    { id: "nuwaraeliya",  lat: 6.9497, lon: 80.7891, name: { en: "Nuwara Eliya", si: "නුවරඑළිය",    ta: "நுவரெலியா" },       crops: ["tea", "tomato"] },
-    { id: "galle",        lat: 6.0535, lon: 80.2210, name: { en: "Galle",        si: "ගාල්ල",       ta: "காலி" },            crops: ["tea", "rice"] },
-    { id: "jaffna",       lat: 9.6615, lon: 80.0255, name: { en: "Jaffna",       si: "යාපනය",       ta: "யாழ்ப்பாணம்" },     crops: ["chilli", "tomato"] },
-    { id: "batticaloa",   lat: 7.7310, lon: 81.6747, name: { en: "Batticaloa",   si: "මඩකලපුව",     ta: "மட்டக்களப்பு" },    crops: ["rice", "chilli"] },
-    { id: "trincomalee",  lat: 8.5874, lon: 81.2152, name: { en: "Trincomalee",  si: "ත්‍රිකුණාමලය", ta: "திருகோணமலை" },     crops: ["rice", "chilli"] },
-    { id: "anuradhapura", lat: 8.3114, lon: 80.4037, name: { en: "Anuradhapura", si: "අනුරාධපුරය",  ta: "அனுராதபுரம்" },     crops: ["rice", "chilli"] },
-    { id: "kurunegala",   lat: 7.4863, lon: 80.3647, name: { en: "Kurunegala",   si: "කුරුණෑගල",    ta: "குருணாகல்" },       crops: ["rice", "tomato"] },
-    { id: "badulla",      lat: 6.9934, lon: 81.0550, name: { en: "Badulla",      si: "බදුල්ල",      ta: "பதுளை" },           crops: ["tea", "tomato"] },
-    { id: "ratnapura",    lat: 6.6828, lon: 80.3992, name: { en: "Ratnapura",    si: "රත්නපුර",     ta: "இரத்தினபுரி" },     crops: ["tea", "rice"] },
-    { id: "hambantota",   lat: 6.1241, lon: 81.1185, name: { en: "Hambantota",   si: "හම්බන්තොට",   ta: "அம்பாந்தோட்டை" },   crops: ["chilli", "rice"] }
+    { id: "colombo",      lat: 6.9271, lon: 79.8612, name: { en: "Colombo",      si: "කොළඹ",         ta: "கொழும்பு" },        crops: ["tomato", "chilli"] },
+    { id: "gampaha",      lat: 7.0840, lon: 80.0098, name: { en: "Gampaha",      si: "ගම්පහ",        ta: "கம்பஹா" },          crops: ["tomato", "rice"] },
+    { id: "kalutara",     lat: 6.5854, lon: 79.9607, name: { en: "Kalutara",     si: "කළුතර",        ta: "களுத்துறை" },       crops: ["tea", "rice"] },
+    { id: "kandy",        lat: 7.2906, lon: 80.6337, name: { en: "Kandy",        si: "මහනුවර",       ta: "கண்டி" },           crops: ["tea", "tomato"] },
+    { id: "matale",       lat: 7.4675, lon: 80.6234, name: { en: "Matale",       si: "මාතලේ",        ta: "மாத்தளை" },         crops: ["chilli", "rice"] },
+    { id: "nuwaraeliya",  lat: 6.9497, lon: 80.7891, name: { en: "Nuwara Eliya", si: "නුවරඑළිය",     ta: "நுவரெலியா" },       crops: ["tea", "tomato"] },
+    { id: "galle",        lat: 6.0535, lon: 80.2210, name: { en: "Galle",        si: "ගාල්ල",        ta: "காலி" },            crops: ["tea", "rice"] },
+    { id: "matara",       lat: 5.9549, lon: 80.5550, name: { en: "Matara",       si: "මාතර",         ta: "மாத்தறை" },         crops: ["tea", "rice"] },
+    { id: "hambantota",   lat: 6.1241, lon: 81.1185, name: { en: "Hambantota",   si: "හම්බන්තොට",    ta: "அம்பாந்தோட்டை" },   crops: ["chilli", "rice"] },
+    { id: "jaffna",       lat: 9.6615, lon: 80.0255, name: { en: "Jaffna",       si: "යාපනය",        ta: "யாழ்ப்பாணம்" },     crops: ["chilli", "tomato"] },
+    { id: "kilinochchi",  lat: 9.3803, lon: 80.3770, name: { en: "Kilinochchi",  si: "කිලිනොච්චිය",  ta: "கிளிநொச்சி" },      crops: ["rice", "chilli"] },
+    { id: "mannar",       lat: 8.9810, lon: 79.9044, name: { en: "Mannar",       si: "මන්නාරම",      ta: "மன்னார்" },         crops: ["rice", "chilli"] },
+    { id: "vavuniya",     lat: 8.7514, lon: 80.4971, name: { en: "Vavuniya",     si: "වවුනියාව",     ta: "வவுனியா" },         crops: ["rice", "chilli"] },
+    { id: "mullaitivu",   lat: 9.2671, lon: 80.8142, name: { en: "Mullaitivu",   si: "මුලතිව්",      ta: "முல்லைத்தீவு" },    crops: ["rice", "chilli"] },
+    { id: "batticaloa",   lat: 7.7310, lon: 81.6747, name: { en: "Batticaloa",   si: "මඩකලපුව",      ta: "மட்டக்களப்பு" },    crops: ["rice", "chilli"] },
+    { id: "ampara",       lat: 7.2975, lon: 81.6820, name: { en: "Ampara",       si: "අම්පාර",       ta: "அம்பாறை" },         crops: ["rice", "chilli"] },
+    { id: "trincomalee",  lat: 8.5874, lon: 81.2152, name: { en: "Trincomalee",  si: "ත්‍රිකුණාමලය",  ta: "திருகோணமலை" },     crops: ["rice", "chilli"] },
+    { id: "kurunegala",   lat: 7.4863, lon: 80.3647, name: { en: "Kurunegala",   si: "කුරුණෑගල",     ta: "குருணாகல்" },       crops: ["rice", "tomato"] },
+    { id: "puttalam",     lat: 8.0408, lon: 79.8394, name: { en: "Puttalam",     si: "පුත්තලම",      ta: "புத்தளம்" },        crops: ["chilli", "rice"] },
+    { id: "anuradhapura", lat: 8.3114, lon: 80.4037, name: { en: "Anuradhapura", si: "අනුරාධපුරය",   ta: "அனுராதபுரம்" },     crops: ["rice", "chilli"] },
+    { id: "polonnaruwa",  lat: 7.9403, lon: 81.0188, name: { en: "Polonnaruwa",  si: "පොළොන්නරුව",   ta: "பொலன்னறுவை" },     crops: ["rice", "chilli"] },
+    { id: "badulla",      lat: 6.9934, lon: 81.0550, name: { en: "Badulla",      si: "බදුල්ල",       ta: "பதுளை" },           crops: ["tea", "tomato"] },
+    { id: "monaragala",   lat: 6.8728, lon: 81.3507, name: { en: "Monaragala",   si: "මොණරාගල",      ta: "மொணராகலை" },       crops: ["chilli", "rice"] },
+    { id: "ratnapura",    lat: 6.6828, lon: 80.3992, name: { en: "Ratnapura",    si: "රත්නපුර",      ta: "இரத்தினபுரி" },     crops: ["tea", "rice"] },
+    { id: "kegalle",      lat: 7.2513, lon: 80.3464, name: { en: "Kegalle",      si: "කෑගල්ල",       ta: "கேகாலை" },          crops: ["tea", "rice"] }
   ],
+
+  // Choices for the farm-profile form (shown after sign-up). Free-text "other" boxes sit next to these in the form.
+  options: {
+    unit: [
+      { id: "acre",    name: { en: "acres",    si: "අක්කර",     ta: "ஏக்கர்" } },
+      { id: "hectare", name: { en: "hectares", si: "හෙක්ටයාර",  ta: "ஹெக்டேர்" } },
+      { id: "perch",   name: { en: "perches",  si: "පර්චස්",    ta: "பேர்ச்" } }
+    ],
+    ownership: [
+      { id: "own",   name: { en: "Own land",               si: "තමන්ගේ ඉඩම",          ta: "சொந்த நிலம்" } },
+      { id: "lease", name: { en: "Leased / rented",        si: "බදු / කුලී ඉඩම",       ta: "குத்தகை / வாடகை நிலம்" } },
+      { id: "share", name: { en: "Shared / family land",   si: "හවුල් / පවුලේ ඉඩම",    ta: "பகிர்ந்த / குடும்ப நிலம்" } }
+    ],
+    soil: [
+      { id: "clay",  name: { en: "Clay",                   si: "මැටි පස",              ta: "களிமண்" } },
+      { id: "sandy", name: { en: "Sandy",                  si: "වැලි පස",              ta: "மணல் மண்" } },
+      { id: "red",   name: { en: "Red / yellow soil",      si: "රතු / කහ පස",          ta: "சிவப்பு / மஞ்சள் மண்" } },
+      { id: "unsure",name: { en: "Not sure",               si: "නොදනිමි",              ta: "தெரியாது" } }
+    ],
+    water: [
+      { id: "rain",  name: { en: "Rain-fed",               si: "වැසි ජලය",             ta: "மழை நீர்" } },
+      { id: "tank",  name: { en: "Tank (wewa)",            si: "වැව",                  ta: "குளம்" } },
+      { id: "well",  name: { en: "Well",                   si: "ළිඳ",                  ta: "கிணறு" } },
+      { id: "canal", name: { en: "Canal / irrigation scheme", si: "ඇළ / වාරිමාර්ග යෝජනා ක්‍රමය", ta: "கால்வாய் / நீர்ப்பாசனத் திட்டம்" } },
+      { id: "river", name: { en: "River / stream",         si: "ගඟ / ඔය",              ta: "ஆறு / ஓடை" } },
+      { id: "tube",  name: { en: "Tube well / pump",       si: "ටියුබ් ළිං / පොම්පය",  ta: "குழாய்க் கிணறு / பம்பு" } }
+    ],
+    season: [
+      { id: "maha",  name: { en: "Maha",                   si: "මහ",                   ta: "பெரும்போகம்" } },
+      { id: "yala",  name: { en: "Yala",                   si: "යල",                   ta: "சிறுபோகம்" } },
+      { id: "other", name: { en: "Other / whole year",     si: "වෙනත් / මුළු වසර",     ta: "மற்றவை / முழு ஆண்டு" } }
+    ],
+    fert: [
+      { id: "urea",    name: { en: "Urea",                 si: "යූරියා",               ta: "யூரியா" } },
+      { id: "tsp",     name: { en: "TSP",                  si: "TSP",                  ta: "TSP" } },
+      { id: "mop",     name: { en: "MOP",                  si: "MOP",                  ta: "MOP" } },
+      { id: "npk",     name: { en: "NPK mixture",          si: "NPK මිශ්‍රණය",         ta: "NPK கலவை" } },
+      { id: "compost", name: { en: "Compost / organic",    si: "කොම්පෝස්ට් / කාබනික",  ta: "இயற்கை உரம்" } },
+      { id: "none",    name: { en: "No fertilizer",        si: "පොහොර යොදා නැත",       ta: "உரம் இடவில்லை" } }
+    ],
+    diff: [
+      { id: "water",    name: { en: "Lack of water / drought",           si: "ජල හිඟය / නියඟය",                  ta: "நீர்ப் பற்றாக்குறை / வறட்சி" } },
+      { id: "flood",    name: { en: "Floods / heavy rain",               si: "ගංවතුර / අධික වැසි",              ta: "வெள்ளம் / கனமழை" } },
+      { id: "pest",     name: { en: "Pests and diseases",                si: "පළිබෝධ සහ රෝග",                   ta: "பூச்சி மற்றும் நோய்கள்" } },
+      { id: "fertcost", name: { en: "Fertilizer too expensive",          si: "පොහොර මිල අධිකයි",                ta: "உரம் விலை அதிகம்" } },
+      { id: "fertshort",name: { en: "Fertilizer shortage",               si: "පොහොර හිඟය",                      ta: "உரத் தட்டுப்பாடு" } },
+      { id: "price",    name: { en: "Low selling price",                 si: "විකුණුම් මිල අඩුයි",              ta: "குறைந்த விற்பனை விலை" } },
+      { id: "transport",name: { en: "No transport / market is far",      si: "ප්‍රවාහනය නැත / වෙළඳපොළ දුරයි",    ta: "போக்குவரத்து இல்லை / சந்தை தொலைவு" } },
+      { id: "labour",   name: { en: "Not enough labour",                 si: "ශ්‍රමිකයන් හිඟයි",                ta: "தொழிலாளர் பற்றாக்குறை" } },
+      { id: "seed",     name: { en: "Poor quality seed / plants",        si: "බීජ / පැළ ගුණාත්මක නැත",          ta: "தரமற்ற விதை / நாற்று" } },
+      { id: "animals",  name: { en: "Wild animals (elephants, monkeys, boar)", si: "වන සතුන් (ඇතුන්, රිලවුන්, ඌරන්)", ta: "காட்டு விலங்குகள் (யானை, குரங்கு, பன்றி)" } },
+      { id: "loan",     name: { en: "Money / loan problems",             si: "මුදල් / ණය ගැටලු",                 ta: "பணம் / கடன் பிரச்சினை" } },
+      { id: "advice",   name: { en: "No farming advice or training",     si: "ගොවිතැන් උපදෙස් / පුහුණුව නැත",    ta: "விவசாய ஆலோசனை / பயிற்சி இல்லை" } }
+    ],
+    sell: [
+      { id: "trader",  name: { en: "Trader / middleman at the farm",   si: "ගොවිපළට පැමිණෙන වෙළෙන්දා / අතරමැදියා", ta: "பண்ணைக்கு வரும் வியாபாரி / இடைத்தரகர்" } },
+      { id: "local",   name: { en: "Local market",                     si: "ප්‍රාදේශීය වෙළඳපොළ",                   ta: "உள்ளூர் சந்தை" } },
+      { id: "economic",name: { en: "Economic centre",                  si: "ආර්ථික මධ්‍යස්ථානය",                   ta: "பொருளாதார மையம்" } },
+      { id: "direct",  name: { en: "Direct to mill / buyer / exporter",si: "කෙලින්ම මෝල / ගැනුම්කරු / අපනයනකරු",   ta: "நேரடியாக ஆலை / வாங்குவோர் / ஏற்றுமதியாளர்" } },
+      { id: "own",     name: { en: "Only for my own use",              si: "ගෙදර පරිභෝජනයට පමණි",                  ta: "சொந்தப் பயன்பாட்டுக்கு மட்டும்" } }
+    ]
+  },
 
   // FAKE farmer profiles (demo login: 0771234567)
   profiles: [

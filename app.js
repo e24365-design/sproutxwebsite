@@ -14,6 +14,9 @@
   let tab = "home";
   let pending = null;                               // { mode, user, otp } while waiting for OTP
   let gps = null;                                   // { lat, lon } from the GPS button
+  let gpsDist = null;                               // district id that the GPS point belongs to
+  let profDraft = null;                             // farm-profile form kept while the language is switched
+  const draft = {};                                 // sign-up form values kept while the language is switched
   let simulate = false;                             // demo switch on the Alerts tab
   let chat = [];
   const cache = {};
@@ -27,6 +30,30 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const toast = (msg) => { const el = $("#toast"); el.textContent = msg; el.hidden = false; setTimeout(() => (el.hidden = true), 2600); };
   const distName = (id) => { const d = D.districts.find((x) => x.id === id); return d ? L(d.name) : ""; };
+  const placeText = (u) => [u.place, distName(u.district)].filter(Boolean).join(", ");   // "Galgamuwa, Kurunegala"
+
+  /* names are compared without spaces, case or punctuation */
+  const normName = (s) => String(s || "").toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, "");
+  const kmBetween = (la1, lo1, la2, lo2) => Math.hypot((la1 - la2) * 111, (lo1 - lo2) * 111 * Math.cos(((la1 + la2) / 2) * Math.PI / 180));
+  const inSriLanka = (lat, lon) => lat > 5.8 && lat < 9.95 && lon > 79.4 && lon < 82;
+
+  /* ---------- crops: the farmer can pick a known crop OR type any crop name ---------- */
+  // known crop => { crop: "rice", cropName: "" }      typed crop => { crop: "", cropName: "Green gram" }
+  const cropLabel = (o) => (o.crop && D.advice[o.crop]) ? D.advice[o.crop].icon + " " + L(D.advice[o.crop].name) : "🌱 " + (o.cropName || "-");
+  function matchCrop(text) {            // "Rice", "වී", "நெல்" or "rice" -> "rice"; unknown text -> ""
+    const s = normName(text); if (!s) return "";
+    return Object.keys(D.advice).find((k) => normName(k) === s || ["en", "si", "ta"].some((g) => normName(D.advice[k].name[g]) === s)) || "";
+  }
+
+  /* ---------- places: match a district name returned by a map service ---------- */
+  const DISTRICT_ALIASES = { moneragala: "monaragala", mullativu: "mullaitivu", killinochchi: "kilinochchi" };
+  function matchDistrict(raw) {
+    let s = normName(raw); if (!s) return null;
+    Object.keys(DISTRICT_ALIASES).forEach((a) => { s = s.replace(a, DISTRICT_ALIASES[a]); });
+    // longest name wins, so "Kegalle District" does not match "Galle"
+    const hits = D.districts.map((d) => ({ d, n: Math.max(0, ...["en", "si", "ta"].map((g) => normName(d.name[g])).filter((n) => s.includes(n)).map((n) => n.length)) })).filter((x) => x.n).sort((a, b) => b.n - a.n);
+    return hits.length ? hits[0].d : null;
+  }
 
   function normPhone(s) {
     let d = String(s || "").replace(/\D/g, "");
@@ -57,12 +84,37 @@
     document.querySelectorAll(".langs button").forEach((b) => b.classList.toggle("on", b.dataset.lang === lang));
     if (session && me()) { renderNav(); renderTab(); } else renderAuth(authMode);
   }
-  document.querySelectorAll(".langs button").forEach((b) => b.addEventListener("click", () => { lang = b.dataset.lang; store.set("lang", lang); applyLang(); }));
+  document.querySelectorAll(".langs button").forEach((b) => b.addEventListener("click", () => { saveDrafts(); lang = b.dataset.lang; store.set("lang", lang); applyLang(); }));
+
+  // Switching language re-draws the page. Keep whatever the farmer already typed.
+  const SIGNUP_FIELDS = ["f_name", "f_phone", "f_dist", "f_place", "f_crop", "f_crop_other", "f_rot"];
+  function saveDrafts() {
+    if ($("#f_name")) SIGNUP_FIELDS.forEach((id) => { if ($("#" + id)) draft[id] = $("#" + id).value; });
+    if (tab === "profile" && $("#p_save")) profDraft = readProfile();
+  }
 
   /* ---------- AUTH: phone number + OTP (demo) + GPS ---------- */
   let authMode = "signup";
   function cropOptions(sel) { return Object.keys(D.advice).map((k) => `<option value="${k}" ${k === sel ? "selected" : ""}>${D.advice[k].icon} ${esc(L(D.advice[k].name))}</option>`).join(""); }
-  function districtOptions(sel) { return `<option value="">${esc(t("pickDistrict"))}</option>` + D.districts.map((d) => `<option value="${d.id}" ${d.id === sel ? "selected" : ""}>${esc(L(d.name))}</option>`).join(""); }
+  // all 25 districts, sorted A-Z in the farmer's own language
+  function districtOptions(sel) {
+    const list = D.districts.slice().sort((a, b) => L(a.name).localeCompare(L(b.name), lang));
+    return `<option value="">${esc(t("pickDistrict"))}</option>` + list.map((d) => `<option value="${d.id}" ${d.id === sel ? "selected" : ""}>${esc(L(d.name))}</option>`).join("");
+  }
+
+  /* crop picker = dropdown of known crops + "Other" which shows a box to TYPE any crop */
+  function cropPicker(id, key, name) {
+    const custom = !key && !!name;
+    return `<select id="${id}">${cropOptions(key)}<option value="__other" ${custom ? "selected" : ""}>✏️ ${esc(t("cropOther"))}</option></select>
+      <input id="${id}_other" placeholder="${esc(t("cropTypePh"))}" value="${esc(custom ? name : "")}" style="margin-top:.4rem" ${custom ? "" : "hidden"}>`;
+  }
+  function syncCropPicker(id) { $("#" + id + "_other").hidden = $("#" + id).value !== "__other"; }
+  function wireCropPicker(id) { $("#" + id).onchange = () => { syncCropPicker(id); if (!$("#" + id + "_other").hidden) $("#" + id + "_other").focus(); }; }
+  function readCropPicker(id) {
+    if ($("#" + id).value !== "__other") return { crop: $("#" + id).value, cropName: "" };
+    const txt = $("#" + id + "_other").value.trim(), k = matchCrop(txt);     // typed "Rice" still counts as the known crop
+    return k ? { crop: k, cropName: "" } : { crop: "", cropName: txt };
+  }
 
   function renderAuth(mode) {
     authMode = mode || "signup";
@@ -75,15 +127,23 @@
         <label>📱 ${t("phone")}</label><input id="f_phone" inputmode="tel" placeholder="07X XXX XXXX">
         <label>📍 ${t("district")}</label>
         <select id="f_dist">${districtOptions()}</select>
-        <div class="row" style="margin-top:.5rem"><button class="btn ghost" id="gpsBtn" type="button">${t("useGps")}</button><span class="hint" id="gpsMsg"></span></div>
-        <label>🌾 ${t("mainCrop")}</label><select id="f_crop">${cropOptions()}</select>
+        <label>🏡 ${t("place")}</label>
+        <input id="f_place" autocomplete="street-address" placeholder="${esc(t("placePh"))}">
+        <div class="row" style="margin-top:.5rem"><button class="btn ghost" id="gpsBtn" type="button">${t("useGps")}</button></div>
+        <div class="hint" id="gpsMsg" aria-live="polite"></div>
+        <label>🌾 ${t("mainCrop")}</label>${cropPicker("f_crop")}
+        <label>🔄 ${t("rotation")}</label><input id="f_rot" placeholder="${esc(t("rotationPh"))}">
         <label>🌐 ${t("language")}</label>
         <select id="f_lang"><option value="si">සිංහල</option><option value="ta">தமிழ்</option><option value="en">English</option></select>
         <button class="btn block" id="goOtp">${t("sendOtp")}</button>
         <div class="err" id="authErr"></div>`;
+      Object.keys(draft).forEach((id) => { const el = $("#" + id); if (el) el.value = draft[id]; });   // put back what was typed
       $("#f_lang").value = lang;
-      if (gps) $("#gpsMsg").textContent = "✔ " + t("gpsOk");
+      syncCropPicker("f_crop"); wireCropPicker("f_crop");
+      if (gps) setGpsMsg("✔ " + t("gpsOk"));
       $("#gpsBtn").onclick = getGps;
+      // choosing another district by hand means the GPS point no longer applies
+      $("#f_dist").onchange = () => { if (gps && $("#f_dist").value !== gpsDist) { gps = null; setGpsMsg(""); } };
       $("#goOtp").onclick = startSignup;
     } else {
       box.innerHTML = seg + `
@@ -96,25 +156,76 @@
     box.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => renderAuth(b.dataset.m)));
   }
 
+  /* ---------- GPS + address lookup ---------- */
+  function setGpsMsg(text, bad) { const m = $("#gpsMsg"); if (m) { m.textContent = text || ""; m.classList.toggle("bad", !!bad); } }
+
+  // GPS coordinates -> village / town name + district (OpenStreetMap Nominatim, free). Throws if the service is unreachable.
+  async function reverseGeocode(lat, lon) {
+    const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language=${lang},en&lat=${lat}&lon=${lon}`, 8000);
+    const a = j.address || {};
+    return { place: a.village || a.hamlet || a.suburb || a.town || a.city || a.neighbourhood || a.locality || "", district: matchDistrict(a.state_district || a.county || "") };
+  }
+
+  // typed village / town -> coordinates (Open-Meteo geocoding, free). Only accepted if it is near the chosen district.
+  async function geocodePlace(q, d) {
+    try {
+      const j = await getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=en&format=json&countryCode=LK`, 6000);
+      let best = null, bd = Infinity;
+      (j.results || []).forEach((r) => { const km = kmBetween(r.latitude, r.longitude, d.lat, d.lon); if (km < bd) { bd = km; best = r; } });
+      return best && bd <= 70 ? { lat: +best.latitude.toFixed(4), lon: +best.longitude.toFixed(4) } : null;
+    } catch (e) { return null; }       // not found or offline: the district centre is used
+  }
+
   function getGps() {
-    const msg = $("#gpsMsg");
-    if (!navigator.geolocation) { msg.textContent = t("gpsFail"); return; }
-    msg.textContent = t("loading");
-    navigator.geolocation.getCurrentPosition(
-      (p) => { gps = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4) }; $("#f_dist").value = nearestDistrict(gps.lat, gps.lon).id; msg.textContent = "✔ " + t("gpsOk"); },
-      () => { msg.textContent = t("gpsFail"); },
-      { enableHighAccuracy: false, timeout: 10000 }
-    );
+    const btn = $("#gpsBtn");
+    if (!window.isSecureContext) { setGpsMsg(t("gpsInsecure"), true); return; }      // browsers block GPS on plain http pages
+    if (!navigator.geolocation) { setGpsMsg(t("gpsFail"), true); return; }
+    setGpsMsg(t("loading")); btn.disabled = true;
+
+    const fail = (e) => {
+      btn.disabled = false;
+      setGpsMsg(t(e && e.code === 1 ? "gpsDenied" : e && e.code === 3 ? "gpsTimeout" : "gpsUnavail"), true);
+    };
+    const ok = (p) => {
+      btn.disabled = false;
+      const lat = +p.coords.latitude.toFixed(4), lon = +p.coords.longitude.toFixed(4);
+      if (!inSriLanka(lat, lon)) { gps = null; setGpsMsg(t("gpsOutside"), true); return; }
+      gps = { lat, lon }; gpsDist = nearestDistrict(lat, lon).id;
+      $("#f_dist").value = gpsDist; setGpsMsg("✔ " + t("gpsOk"));
+      reverseGeocode(lat, lon).then((r) => {                 // fill in the village / town (and the exact district) when the map service answers
+        if (!gps || !$("#f_dist")) return;                   // the farmer changed things meanwhile
+        if (r.district) { gpsDist = r.district.id; $("#f_dist").value = gpsDist; }
+        if (r.place && !$("#f_place").value.trim()) $("#f_place").value = r.place;
+      }).catch(() => { /* offline: the farmer can type the place */ });
+    };
+    // 1st try: fast position from Wi-Fi / mobile network (a saved position up to 2 minutes old is fine).
+    // 2nd try (only if the 1st one timed out or found nothing): ask the real GPS chip, which is slower but accurate.
+    navigator.geolocation.getCurrentPosition(ok, (e) => {
+      if (e.code === 1) { fail(e); return; }                  // permission denied: a retry would not help
+      setGpsMsg(t("gpsRetry"));
+      navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+    }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 120000 });
   }
 
   const newOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
-  function startSignup() {
-    const name = $("#f_name").value.trim(), phone = normPhone($("#f_phone").value), dist = $("#f_dist").value;
-    if (!name || phone.length !== 10 || (!dist && !gps)) { $("#authErr").textContent = t("badInput"); return; }
-    const d = D.districts.find((x) => x.id === (dist || nearestDistrict(gps.lat, gps.lon).id));
-    const user = { phone, name, district: d.id, lat: gps ? gps.lat : d.lat, lon: gps ? gps.lon : d.lon, usedGps: !!gps,
-      crop: $("#f_crop").value, lang: $("#f_lang").value, farmSize: "-", water: { en: "-", si: "-", ta: "-" }, history: [] };
+  async function startSignup() {
+    const err = $("#authErr");
+    const name = $("#f_name").value.trim(), phone = normPhone($("#f_phone").value), distId = $("#f_dist").value, place = $("#f_place").value.trim();
+    const cp = readCropPicker("f_crop"), rotation = $("#f_rot").value.trim();
+    if (!name || phone.length !== 10 || (!distId && !gps)) { err.textContent = t("badInput"); return; }
+    if (!cp.crop && !cp.cropName) { err.textContent = t("needCrop"); return; }
+    err.textContent = "";
+    const d = D.districts.find((x) => x.id === (distId || nearestDistrict(gps.lat, gps.lon).id));
+    let lat = d.lat, lon = d.lon;
+    if (gps) { lat = gps.lat; lon = gps.lon; }
+    else if (place) {                                         // typed place: look up its own coordinates so the weather is for the village, not just the district
+      const btn = $("#goOtp"); btn.disabled = true; btn.textContent = t("loading");
+      const g = await geocodePlace(place, d);
+      if (g) { lat = g.lat; lon = g.lon; }
+    }
+    const user = { phone, name, district: d.id, place, lat, lon, usedGps: !!gps, crop: cp.crop, cropName: cp.cropName, rotation,
+      lang: $("#f_lang").value, farmSize: "-", water: { en: "-", si: "-", ta: "-" }, history: [], profileDone: false };
     pending = { mode: "signup", user, otp: newOtp() };
     renderAuth(authMode);
   }
@@ -137,7 +248,11 @@
     $("#goVerify").onclick = () => {
       if ($("#f_otp").value.trim() !== pending.otp) { $("#authErr").textContent = t("wrongOtp"); return; }
       const u = pending.user;
-      if (pending.mode === "signup") saveUser(u);
+      if (pending.mode === "signup") {
+        saveUser(u);
+        tab = "profile";                                      // new farmers go straight to the farm-profile form
+        gps = null; gpsDist = null; Object.keys(draft).forEach((k) => delete draft[k]);
+      }
       session = u.phone; store.set("session", session); pending = null;
       lang = u.lang || lang; store.set("lang", lang);
       showApp();
@@ -155,12 +270,12 @@
     $("#nav").innerHTML = TABS.map(([k, ic]) => `<button data-t="${k}" class="${k === tab ? "on" : ""}">${ic} ${t("tab_" + k)}</button>`).join("");
     $("#nav").querySelectorAll("button").forEach((b) => (b.onclick = () => go(b.dataset.t)));
   }
-  function go(k) { tab = k; renderNav(); renderTab(); window.scrollTo(0, 0); }
+  function go(k) { tab = k; if (k !== "profile") profDraft = null; renderNav(); renderTab(); window.scrollTo(0, 0); }
   function renderTab() {
     const u = me(); if (!u) return;
-    ({ home: viewHome, account: viewAccount, alerts: viewAlerts, advice: viewAdvice, market: viewMarket, chat: viewChat })[tab](u);
+    ({ home: viewHome, account: viewAccount, alerts: viewAlerts, advice: viewAdvice, market: viewMarket, chat: viewChat, profile: viewProfile })[tab](u);
   }
-  function logout() { session = null; store.set("session", null); pending = null; $("#app").hidden = true; $("#landing").hidden = false; applyLang(); }
+  function logout() { session = null; store.set("session", null); pending = null; tab = "home"; profDraft = null; $("#app").hidden = true; $("#landing").hidden = false; applyLang(); }
 
   /* ---------- DATA: Open-Meteo (live) + NASA POWER (history), with sample fallback ---------- */
   async function getJSON(url, ms) {
@@ -234,14 +349,15 @@
   /* ---------- HOME ---------- */
   async function viewHome(u) {
     const v = $("#view");
-    v.innerHTML = `<h2>${t("hello")}, ${esc(u.name)} 👋</h2><p class="src">📍 ${esc(distName(u.district))}${u.usedGps ? " (GPS)" : ""}</p><div class="card">${t("loading")}</div>`;
+    v.innerHTML = `<h2>${t("hello")}, ${esc(u.name)} 👋</h2><p class="src">📍 ${esc(placeText(u))}${u.usedGps ? " (GPS)" : ""}</p><div class="card">${t("loading")}</div>`;
     const [wx, nasa] = await Promise.all([getWeather(u), getNasa(u)]);
     if (tab !== "home") return;
     const soilAvg = avg(nasa.soil.slice(-7)), soilKey = soilAvg < 0.35 ? "soil_dry" : soilAvg > 0.75 ? "soil_wet" : "soil_ok";
     v.innerHTML = `
       <h2>${t("hello")}, ${esc(u.name)} 👋</h2>
-      <p class="src">📍 ${esc(distName(u.district))}${u.usedGps ? " (GPS)" : ""} · ${u.lat}, ${u.lon}</p>
+      <p class="src">📍 ${esc(placeText(u))}${u.usedGps ? " (GPS)" : ""} · ${u.lat}, ${u.lon}</p>
       <div class="stack">
+        ${u.profileDone ? "" : `<div class="insight">📝 ${t("profileNudge")} <button class="btn ghost" data-go="profile" style="margin-left:.4rem">${t("fillProfile")}</button></div>`}
         <div class="card">
           <h3>⛅ ${t("liveWeather")}</h3>
           <div class="grid">
@@ -259,6 +375,7 @@
         <div class="card reveal"><h3>🌱 ${t("chartSoil")}</h3>${svgChart(nasa.soil, nasa.days, { color: "#6d4c41", min: 0, max: 1 })}
           <p class="src ${nasa.live ? "" : "bad"}">${nasa.live ? t("srcNasa") : t("srcSample")}</p></div>
       </div>`;
+    document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
     observeReveal();
   }
 
@@ -291,12 +408,14 @@
   /* ---------- ADVICE ---------- */
   let adviceCrop = null;
   function viewAdvice(u) {
-    const c = adviceCrop || u.crop, a = D.advice[c];
     const dist = D.districts.find((d) => d.id === u.district) || nearestDistrict(u.lat, u.lon);
+    const known = !!(u.crop && D.advice[u.crop]);               // a crop the farmer typed has no sample advice
+    const c = adviceCrop || (known ? u.crop : dist.crops[0]), a = D.advice[c];
     const chips = Object.keys(D.advice).map((k) => `<button class="chip ${k === c ? "on" : ""}" data-c="${k}">${D.advice[k].icon} ${esc(L(D.advice[k].name))}</button>`).join("");
     $("#view").innerHTML = `
       <h2>🌱 ${t("adviceTitle")}</h2>
       <p class="src">${t("suggested")}: ${dist.crops.map((k) => D.advice[k].icon + " " + esc(L(D.advice[k].name))).join(", ")} (${esc(L(dist.name))})</p>
+      ${!adviceCrop && !known && u.cropName ? `<p class="src bad">${t("noAdviceCrop", { c: esc(u.cropName) })}</p>` : ""}
       <div class="chips">${chips}</div>
       <div class="card stack">
         <h3>${a.icon} ${esc(L(a.name))}</h3>
@@ -310,38 +429,146 @@
   }
 
   /* ---------- ACCOUNT ---------- */
+  const optText = (list, id) => { const o = list.find((x) => x.id === id); return o ? L(o.name) : ""; };
+  // "Urea, TSP, my own mix" in language g (default: the current language)
+  const listText = (list, ids, other, g) => (ids || []).map((id) => { const o = list.find((x) => x.id === id); return o ? (o.name[g || lang] || o.name.en) : ""; }).concat(other ? [other] : []).filter(Boolean).join(", ");
+  function farmSizeText(u) {
+    const p = u.profile;
+    if (p && p.size) return p.size + " " + (optText(D.options.unit, p.unit) || "");
+    return u.farmSize || "-";                           // sample farmers have a ready-made text like "2.5 acres"
+  }
+
   function viewAccount(u) {
+    const p = u.profile;
+    const row = (k, v) => (v ? `<dt>${t(k)}</dt><dd>${esc(v)}</dd>` : "");
     $("#view").innerHTML = `
       <h2>👤 ${t("accountTitle")}</h2>
       <div class="stack">
         <div class="card"><dl class="kv">
           <dt>${t("fullName")}</dt><dd>${esc(u.name)}</dd>
           <dt>${t("phone")}</dt><dd>${esc(u.phone)}</dd>
-          <dt>${t("location")}</dt><dd>${esc(distName(u.district))}${u.usedGps ? " · " + t("gpsLoc") : ""}</dd>
-          <dt>${t("mainCrop")}</dt><dd>${D.advice[u.crop].icon} ${esc(L(D.advice[u.crop].name))}</dd>
-          <dt>${t("farmSize")}</dt><dd>${esc(u.farmSize || "-")}</dd>
-          <dt>${t("waterSource")}</dt><dd>${esc(L(u.water))}</dd></dl>
+          <dt>${t("location")}</dt><dd>${esc(placeText(u))}${u.usedGps ? " · " + t("gpsLoc") : ""}</dd>
+          <dt>${t("mainCrop")}</dt><dd>${esc(cropLabel(u))}</dd>
+          ${row("rotationShort", u.rotation)}
+          <dt>${t("farmSize")}</dt><dd>${esc(farmSizeText(u))}</dd>
+          <dt>${t("waterSource")}</dt><dd>${esc(L(u.water) || "-")}</dd></dl>
           <div class="row" style="margin-top:.8rem"><button class="btn ghost" data-go="advice">${t("goAdvice")}</button><button class="btn ghost" data-go="alerts">${t("goAlerts")}</button></div>
         </div>
+        <div class="card"><h3>🧑‍🌾 ${t("profileTitle")}</h3>
+          ${p ? `<dl class="kv">
+            ${row("experience", p.years ? p.years + " " + t("yrs") : "")}
+            ${row("ownership", optText(D.options.ownership, p.own))}
+            ${row("soil", optText(D.options.soil, p.soil))}
+            ${row("fertUsed", [listText(D.options.fert, p.fert, p.fertOther), p.fertNote].filter(Boolean).join(" · "))}
+            ${row("chemShort", p.chem)}
+            ${row("difficulties", listText(D.options.diff, p.diff, p.diffOther))}
+            ${row("sellShort", optText(D.options.sell, p.sell))}
+            ${row("notesShort", p.notes)}</dl>` : `<p class="src">${t("profileNudge")}</p>`}
+          <button class="btn ghost" style="margin-top:.8rem" data-go="profile">${p ? t("editProfile") : t("fillProfile")}</button>
+        </div>
         <div class="card"><h3>📖 ${t("cropHistory")}</h3>
-          ${u.history && u.history.length ? `<table><tr><th>${t("year")}</th><th>${t("crop")}</th><th>${t("yield")}</th></tr>${u.history.map((h) => `<tr><td>${h.year}</td><td>${D.advice[h.crop].icon} ${esc(L(D.advice[h.crop].name))}</td><td>${esc(h.yield)}</td></tr>`).join("")}</table>` : "<p class='src'>-</p>"}
+          ${u.history && u.history.length ? `<table><tr><th>${t("year")}</th><th>${t("crop")}</th><th>${t("season")}</th><th>${t("yield")}</th></tr>${u.history.map((h) => `<tr><td>${h.year}</td><td>${esc(cropLabel(h))}</td><td>${esc(optText(D.options.season, h.season) || "-")}</td><td>${esc(h.yield)}</td></tr>`).join("")}</table>` : "<p class='src'>-</p>"}
         </div>
         <div class="card"><h3>✅ ${t("practices")}</h3>${D.bestPractices.map((p) => `<p>${p.icon} ${esc(L(p.text))}</p>`).join("")}</div>
         <div class="card"><h3>⚙️ ${t("settings")}</h3>
           <label>${t("fullName")}</label><input id="s_name" value="${esc(u.name)}">
-          <label>${t("mainCrop")}</label><select id="s_crop">${cropOptions(u.crop)}</select>
+          <label>${t("mainCrop")}</label>${cropPicker("s_crop", u.crop, u.cropName)}
+          <label>${t("rotation")}</label><input id="s_rot" value="${esc(u.rotation || "")}" placeholder="${esc(t("rotationPh"))}">
           <label>${t("language")}</label><select id="s_lang"><option value="si">සිංහල</option><option value="ta">தமிழ்</option><option value="en">English</option></select>
           <button class="btn block" id="s_save">${t("save")}</button>
         </div>
         <button class="btn ghost" id="outBtn">${t("logout")}</button>
       </div>`;
     $("#s_lang").value = u.lang || lang;
+    wireCropPicker("s_crop");
     document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
     $("#s_save").onclick = () => {
-      const nu = Object.assign({}, u, { name: $("#s_name").value.trim() || u.name, crop: $("#s_crop").value, lang: $("#s_lang").value });
+      const cp = readCropPicker("s_crop");
+      if (!cp.crop && !cp.cropName) { toast(t("needCrop")); return; }
+      const nu = Object.assign({}, u, { name: $("#s_name").value.trim() || u.name, crop: cp.crop, cropName: cp.cropName, rotation: $("#s_rot").value.trim(), lang: $("#s_lang").value });
       saveUser(nu); lang = nu.lang; store.set("lang", lang); adviceCrop = null; toast(t("saved")); applyLang();
     };
     $("#outBtn").onclick = logout;
+  }
+
+  /* ---------- FARM PROFILE: opens right after sign-up, can be edited later from My account ---------- */
+  const chk = (name, list, on) => list.map((o) => `<label class="chk"><input type="checkbox" name="${name}" value="${o.id}" ${(on || []).includes(o.id) ? "checked" : ""}> ${esc(L(o.name))}</label>`).join("");
+  const opts = (list, sel, placeholderKey) => (placeholderKey === false ? "" : `<option value="">${esc(t(placeholderKey || "choose"))}</option>`) + list.map((o) => `<option value="${o.id}" ${o.id === sel ? "selected" : ""}>${esc(L(o.name))}</option>`).join("");
+  const ticked = (name) => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map((el) => el.value);
+  const lyRow = (r) => `<div class="lyrow row">
+      <select class="ly_s" aria-label="${esc(t("season"))}">${opts(D.options.season, r.season, "season")}</select>
+      <input class="ly_c" list="cropList" placeholder="${esc(t("cropTypePh"))}" value="${esc(r.crop || "")}">
+      <input class="ly_y" placeholder="${esc(t("yieldPh"))}" value="${esc(r.yield || "")}">
+      <button type="button" class="btn ghost rm" aria-label="remove">✕</button></div>`;
+
+  function readProfile() {
+    const v = (id) => ($("#" + id) ? $("#" + id).value.trim() : "");
+    const rows = Array.from(document.querySelectorAll(".lyrow")).map((r) => ({ season: r.querySelector(".ly_s").value, crop: r.querySelector(".ly_c").value.trim(), yield: r.querySelector(".ly_y").value.trim() }));
+    return { years: v("p_years"), size: v("p_size"), unit: v("p_unit"), own: v("p_own"), soil: v("p_soil"),
+      water: ticked("p_water"), waterOther: v("p_waterOther"), rows,
+      fert: ticked("p_fert"), fertOther: v("p_fertOther"), fertNote: v("p_fertNote"), chem: v("p_chem"),
+      diff: ticked("p_diff"), diffOther: v("p_diffOther"), sell: v("p_sell"), notes: v("p_notes") };
+  }
+
+  function saveProfile(u) {
+    const p = readProfile(), year = new Date().getFullYear() - 1;           // "last year"
+    p.rows = p.rows.filter((r) => r.crop || r.yield);
+    const nu = Object.assign({}, u, { profile: p, profileDone: true });
+    // keep the older fields (used by Account / Home) in step with the new form
+    nu.water = { en: listText(D.options.water, p.water, p.waterOther, "en") || "-", si: listText(D.options.water, p.water, p.waterOther, "si") || "-", ta: listText(D.options.water, p.water, p.waterOther, "ta") || "-" };
+    if (p.size) nu.farmSize = p.size + " " + optText(D.options.unit, p.unit);
+    if (p.rows.length) nu.history = p.rows.map((r) => { const k = matchCrop(r.crop); return { year, season: r.season, crop: k, cropName: k ? "" : r.crop, yield: r.yield || "-" }; });
+    saveUser(nu); toast(t("saved")); go("home");
+  }
+
+  function viewProfile(u) {
+    const p = profDraft || u.profile || {};
+    const rows = p.rows && p.rows.length ? p.rows : [{}];
+    $("#view").innerHTML = `
+      <div class="profile stack">
+        <div><h2>🧑‍🌾 ${t("profileTitle")}</h2><p class="src">${t("profileIntro")}</p></div>
+
+        <div class="card"><h3>🏡 ${t("secFarm")}</h3>
+          <label>${t("years")}</label><input id="p_years" type="number" inputmode="numeric" min="0" max="80" value="${esc(p.years || "")}">
+          <label>${t("farmSize")}</label>
+          <div class="two"><input id="p_size" type="number" inputmode="decimal" min="0" step="any" value="${esc(p.size || "")}"><select id="p_unit">${opts(D.options.unit, p.unit || "acre", false)}</select></div>
+          <label>${t("ownership")}</label><select id="p_own">${opts(D.options.ownership, p.own)}</select>
+          <label>${t("soil")}</label><select id="p_soil">${opts(D.options.soil, p.soil)}</select>
+          <label>${t("waterSource")}</label><div class="checks">${chk("p_water", D.options.water, p.water)}</div>
+          <input id="p_waterOther" placeholder="${esc(t("waterOther"))}" value="${esc(p.waterOther || "")}" style="margin-top:.4rem">
+        </div>
+
+        <div class="card"><h3>🔄 ${t("secLast")}</h3><p class="src">${t("lastHelp")}</p>
+          <datalist id="cropList">${Object.keys(D.advice).map((k) => `<option value="${esc(L(D.advice[k].name))}">`).join("")}</datalist>
+          <div id="ly_rows">${rows.map(lyRow).join("")}</div>
+          <button type="button" class="btn ghost" id="ly_add" style="margin-top:.6rem">${t("addCrop")}</button>
+        </div>
+
+        <div class="card"><h3>🧪 ${t("secFert")}</h3>
+          <div class="checks">${chk("p_fert", D.options.fert, p.fert)}</div>
+          <input id="p_fertOther" placeholder="${esc(t("fertOther"))}" value="${esc(p.fertOther || "")}" style="margin-top:.4rem">
+          <label>${t("fertNote")}</label><input id="p_fertNote" placeholder="${esc(t("fertNotePh"))}" value="${esc(p.fertNote || "")}">
+          <label>${t("chem")}</label><input id="p_chem" value="${esc(p.chem || "")}">
+        </div>
+
+        <div class="card"><h3>⚠️ ${t("secDiff")}</h3>
+          <div class="checks">${chk("p_diff", D.options.diff, p.diff)}</div>
+          <input id="p_diffOther" placeholder="${esc(t("diffOther"))}" value="${esc(p.diffOther || "")}" style="margin-top:.4rem">
+          <label>${t("sell")}</label><select id="p_sell">${opts(D.options.sell, p.sell)}</select>
+          <label>${t("notes")}</label><textarea id="p_notes" rows="3">${esc(p.notes || "")}</textarea>
+        </div>
+
+        <button class="btn block" id="p_save">${t("saveProfile")}</button>
+        <button class="link" id="p_skip">${u.profileDone ? t("cancel") : t("skip")}</button>
+      </div>`;
+    $("#ly_add").onclick = () => $("#ly_rows").insertAdjacentHTML("beforeend", lyRow({}));
+    $("#ly_rows").onclick = (e) => {
+      const b = e.target.closest(".rm"); if (!b) return;
+      b.closest(".lyrow").remove();
+      if (!document.querySelector(".lyrow")) $("#ly_rows").insertAdjacentHTML("beforeend", lyRow({}));   // always keep one empty row
+    };
+    $("#p_save").onclick = () => saveProfile(u);
+    $("#p_skip").onclick = () => go(u.profileDone ? "account" : "home");
   }
 
   /* ---------- MARKET (all sample data) ---------- */
