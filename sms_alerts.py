@@ -90,16 +90,19 @@ def to_e164(phone):
 
 
 def send_sms(to, body):
-    """Send one SMS with the Twilio REST API (needs only the 'requests' package)."""
-    sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    token = os.environ.get("TWILIO_AUTH_TOKEN")
-    sender = os.environ.get("TWILIO_FROM")
-    if not (sid and token and sender):
-        raise RuntimeError("Missing TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM")
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-    r = requests.post(url, auth=(sid, token), data={"To": to, "From": sender, "Body": body}, timeout=20)
-    r.raise_for_status()
-    return r.json().get("sid")
+    user = os.environ.get("SMSGATE_USERNAME")
+    pw = os.environ.get("SMSGATE_PASSWORD")
+    if not (user and pw):
+        raise RuntimeError("Missing SMSGATE_USERNAME / SMSGATE_PASSWORD")
+    r = requests.post(
+        "https://api.sms-gate.app/3rdparty/v1/messages",
+        auth=(user, pw),
+        json={"textMessage": {"text": body}, "phoneNumbers": [to]},
+        timeout=20,
+    )
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code}: {r.text}")
+    return r.json().get("id", "queued")
 
 
 def main():
