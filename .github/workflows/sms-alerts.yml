@@ -1,1 +1,26 @@
+name: Sproutx SMS alerts
 
+on:
+  schedule:
+    - cron: "30 0 * * *"   # 06:00 Sri Lanka time
+  workflow_dispatch:
+    inputs:
+      demo:
+        description: "Use fake heat wave (always sends)"
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check weather and send SMS
+        run: python sms_alerts.py --send ${{ inputs.demo && '--demo' || '' }}
+        env:
+          SMSGATE_USERNAME: ${{ secrets.SMSGATE_USERNAME }}
+          SMSGATE_PASSWORD: ${{ secrets.SMSGATE_PASSWORD }}
