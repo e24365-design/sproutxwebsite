@@ -157,8 +157,7 @@ def main():
     args = ap.parse_args()
 
     here = Path(__file__).parent
-    farmers = json.loads((here / "subscribers.json").read_text(encoding="utf-8"))
-
+farmers = load_subscribers(here)
     sent = skipped = 0
     for f in farmers:
         try:
